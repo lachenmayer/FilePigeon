@@ -1,45 +1,57 @@
-const archiver = require('archiver')
-const cuid = require('cuid')
-const EventEmitter = require('events')
-const express = require('express')
-const fs = require('fs')
-const http = require('http')
-const ip = require('internal-ip').v4()
-const mkdirp = require('mkdirp')
-const os = require('os')
-const path = require('path')
-const rimraf = require('rimraf')
-const onQuit = require('node-cleanup')
+const {app, BrowserWindow} = require('electron')
+const mapValues = require('lodash.mapvalues')
+const xs = require('xstream').default
+const dropRepeats = require('xstream/extra/dropRepeats').default
+const fromEvent = require('xstream/extra/fromEvent').default
+const {run} = require('@cycle/run')
 
-const events = new EventEmitter()
+function main ({lifecycle, mainWindow}) {
+  mainWindow.focused$.addListener({next: l => console.log(l)})
+  return {
+    mainWindow: lifecycle.ready$.mapTo(true),
+  }
+}
 
-const tmpPath = path.join(os.tmpdir(), `droppah-${cuid()}`)
-mkdirp.sync(tmpPath)
-onQuit(() => {
-  rimraf.sync(tmpPath)
-})
+const drivers = {
+  lifecycle: makeAppLifecycleDriver(app),
+  mainWindow: makeBrowserWindowDriver({width: 300, height: 300, backgroundColor: '#ff9600'}),
+}
 
-const zipPath = path.join(tmpPath, 'archive.zip')
-const zipStream = fs.createWriteStream(zipPath)
-zipStream.on('close', () => { events.emit('zip-ready') })
+run(main, drivers)
 
-const archive = archiver('zip', {
-  store: true,
-})
-archive.pipe(zipStream)
+// https://github.com/apoco/cycle-electron-driver/blob/master/src/AppLifecycleDriver.js
+function makeAppLifecycleDriver (app) {
+  return () => {
+    const events = {
+      willFinishLaunching$: 'will-finish-launching',
+      ready$: 'ready',
+      windowAllClosed$: 'window-all-closed',
+      beforeQuit$: 'before-quit',
+      willQuit$: 'will-quit',
+    }
+    return mapValues(events, event => fromEvent(app, event))
+  }
+}
 
-events.on('zip-ready', () => {
-  const app = express()
-  app.get('/drop', (req, res) => {
-    res.sendFile(zipPath)
-  })
-  const port = 3000
-  http.createServer(app).listen(port, () => {
-    console.log('ur drop is reddy')
-    console.log(`http://${ip}:${port}/drop`)
-  })
-})
-
-const droppedPath = process.cwd()
-archive.directory(droppedPath, 'droppah')
-archive.finalize()
+function makeBrowserWindowDriver (initialOptions) {
+  let win
+  return exists$ => {
+    exists$.addListener({
+      next: exists => { win = exists ? new BrowserWindow(initialOptions) : null },
+      error: e => { console.error(e) },
+      end: () => { win = null },
+    })
+    // doesn't work
+    const theWindow$ = exists$
+      .mapTo(win)
+      .filter(win => !!win)
+    const event$ = eventName =>
+      theWindow$
+        .map(win => fromEvent(win, eventName))
+        .flatten()
+    const focused$ = xs.merge(event$('blur').mapTo(false), event$('focus').mapTo(false))
+    return {
+      focused$,
+    }
+  }
+}
