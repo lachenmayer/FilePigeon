@@ -1,57 +1,53 @@
-const {app, BrowserWindow} = require('electron')
-const mapValues = require('lodash.mapvalues')
-const xs = require('xstream').default
-const dropRepeats = require('xstream/extra/dropRepeats').default
-const fromEvent = require('xstream/extra/fromEvent').default
 const {run} = require('@cycle/run')
+const {app, BrowserWindow, ipcMain} = require('electron')
+const path = require('path')
+const url = require('url')
+const xs = require('xstream').default
 
-function main ({lifecycle, mainWindow}) {
-  mainWindow.focused$.addListener({next: l => console.log(l)})
+const makeIPCDriver = require('./makeIPCDriver')
+
+let win
+
+function createWindow () {
+  win = new BrowserWindow({width: 300, height: 300, background: '#ff9600'})
+
+  win.loadURL(url.format({
+    pathname: path.join(__dirname, 'renderer', 'index.html'),
+    protocol: 'file:',
+    slashes: true,
+  }))
+
+  win.webContents.on('will-navigate', event => {
+    event.preventDefault()
+  })
+
+  win.webContents.on('new-window', event => {
+    event.preventDefault()
+  })
+
+  win.on('closed', () => {
+    win = null
+  })
+}
+
+app.on('ready', createWindow)
+app.on('window-all-closed', () => { app.quit() })
+app.on('activate', () => {
+  if (win === null) {
+    createWindow()
+  }
+})
+
+
+function main ({IPC}) {
+  IPC.addListener({next: console.log})
   return {
-    mainWindow: lifecycle.ready$.mapTo(true),
+    IPC: xs.never()
   }
 }
 
 const drivers = {
-  lifecycle: makeAppLifecycleDriver(app),
-  mainWindow: makeBrowserWindowDriver({width: 300, height: 300, backgroundColor: '#ff9600'}),
+  IPC: makeIPCDriver(ipcMain)
 }
 
 run(main, drivers)
-
-// https://github.com/apoco/cycle-electron-driver/blob/master/src/AppLifecycleDriver.js
-function makeAppLifecycleDriver (app) {
-  return () => {
-    const events = {
-      willFinishLaunching$: 'will-finish-launching',
-      ready$: 'ready',
-      windowAllClosed$: 'window-all-closed',
-      beforeQuit$: 'before-quit',
-      willQuit$: 'will-quit',
-    }
-    return mapValues(events, event => fromEvent(app, event))
-  }
-}
-
-function makeBrowserWindowDriver (initialOptions) {
-  let win
-  return exists$ => {
-    exists$.addListener({
-      next: exists => { win = exists ? new BrowserWindow(initialOptions) : null },
-      error: e => { console.error(e) },
-      end: () => { win = null },
-    })
-    // doesn't work
-    const theWindow$ = exists$
-      .mapTo(win)
-      .filter(win => !!win)
-    const event$ = eventName =>
-      theWindow$
-        .map(win => fromEvent(win, eventName))
-        .flatten()
-    const focused$ = xs.merge(event$('blur').mapTo(false), event$('focus').mapTo(false))
-    return {
-      focused$,
-    }
-  }
-}
