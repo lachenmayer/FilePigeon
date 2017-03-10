@@ -1,0 +1,12 @@
+digraph {
+  initial -> "choosing files" [label=" fileDropped "]
+  "choosing files" -> "choosing files" [label=" fileDropped / fileRemoved "]
+  "choosing files" -> zipping [label=" filesChosen "]
+  zipping -> serving [label=" archiveCreated "]
+
+  "choosing files" -> initial [label=" aborted "]
+  serving -> downloading [label=" downloadStarted "]
+  downloading -> serving [label=" downloadFinished "]
+  serving -> initial [label=" aborted "]
+  downloading -> initial [label=" aborted "]
+}

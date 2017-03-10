@@ -4,7 +4,9 @@ const path = require('path')
 const url = require('url')
 const xs = require('xstream').default
 
-const makeIPCDriver = require('./makeIPCDriver')
+const files = require('./components/files')
+
+const makeIPCDriver = require('./helpers/makeIPCDriver')
 
 let win
 
@@ -39,15 +41,31 @@ app.on('activate', () => {
 })
 
 
-function main ({IPC}) {
-  IPC.addListener({next: console.log})
+function main ({rendererActions}) {
+
+  //
+  // NEXT:
+  // - get list of files in main
+  // - create temp dir & zip up the files (emitting actions)
+  // - start serving (emitting actions)
+  // - make served website
+  // - log access & dl speed
+  // - clean up temp dir
+  //
+
+  const files$ = files.model(rendererActions)
+  files$
+    .filter(({final}) => final)
+    .take(1)
+    .addListener({next: console.log})
+
   return {
-    IPC: xs.never()
+    rendererActions: xs.never(),
   }
 }
 
 const drivers = {
-  IPC: makeIPCDriver(ipcMain)
+  rendererActions: makeIPCDriver(ipcMain)
 }
 
 run(main, drivers)
