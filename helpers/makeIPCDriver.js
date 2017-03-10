@@ -1,5 +1,8 @@
 const fromEvent = require('xstream/extra/fromEvent').default
 
+
+// TODO make this work for ipcMain
+
 module.exports = function (ipcInstance) {
   return actions$ => {
     actions$.addListener({

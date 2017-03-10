@@ -4,9 +4,8 @@ const path = require('path')
 const url = require('url')
 const xs = require('xstream').default
 
-const files = require('./components/files')
-
 const makeIPCDriver = require('./helpers/makeIPCDriver')
+const zipFile$ = require('./helpers/zipFile')
 
 let win
 
@@ -41,31 +40,43 @@ app.on('activate', () => {
 })
 
 
-function main ({rendererActions}) {
+function main ({rendererActions, zip}) {
 
   //
   // NEXT:
-  // - get list of files in main
-  // - create temp dir & zip up the files (emitting actions)
   // - start serving (emitting actions)
   // - make served website
   // - log access & dl speed
   // - clean up temp dir
   //
 
-  const files$ = files.model(rendererActions)
-  files$
-    .filter(({final}) => final)
-    .take(1)
-    .addListener({next: console.log})
+  const serverActions$ = rendererActions
+    .filter(a => a.type.startsWith('server/'))
+
+  const files$ = serverActions$.fold((_, {type, payload}) => {
+    switch (type) {
+      case 'server/start': return Object.values(payload)
+      case 'server/stop': return null
+    }
+    return _
+  }, null)
 
   return {
-    rendererActions: xs.never(),
+    rendererActions: zip,
+    zip: files$,
   }
 }
 
 const drivers = {
-  rendererActions: makeIPCDriver(ipcMain)
+  rendererActions: makeIPCDriver(ipcMain),
+  zip: zipDriver,
+}
+
+function zipDriver (files$) {
+  return files$
+    .filter(files => files != null)
+    .map(zipFile$)
+    .flatten()
 }
 
 run(main, drivers)

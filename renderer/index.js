@@ -3,6 +3,7 @@ const {run} = require('@cycle/run')
 const {ipcRenderer} = require('electron')
 const xs = require('xstream').default
 const fromEvent = require('xstream/extra/fromEvent').default
+const sampleCombine = require('xstream/extra/sampleCombine').default
 
 const drag = require('../components/drag')
 const files = require('../components/files')
@@ -18,26 +19,39 @@ const drivers = {
   mainActions: makeIPCDriver(ipcRenderer),
 }
 
-function main ({DOM}) {
-  const dragAction$ = drag.intent(DOM)
+function main ({DOM, mainActions}) {
+  const dragAction$ = drag.intent(DOM.select('.main'))
   const filesAction$ = files.intent(DOM)
 
-  const dragModel$ = drag.model(dragAction$)
-  const filesModel$ = files.model(filesAction$)
+  const dragging$ = drag.model(dragAction$)
+  const files$ = files.model(filesAction$.debug())
 
-  const view$ = xs.combine(dragModel$, filesModel$).map(([drag, {files}]) => view(drag, files))
+  const serverStart = DOM.select('.serve').events('click')
+    .compose(sampleCombine(files$))
+    .map(([_, files]) => action('server/start', files))
+
+  const serverState$ = mainActions.fold((state, {type, payload}) => {
+    switch (type) {
+      case 'zip/start': return 'zipping...'
+      case 'zip/done': return 'zip file ready!'
+    }
+    return state
+  }, null)
+
+  const view$ = xs.combine(dragging$, files$, serverState$).map(models => view(...models))
 
   return {
     DOM: view$,
-    mainActions: filesAction$,
+    mainActions: serverStart,
   }
 }
 
 run(main, drivers)
 
-function view (drag, files) {
-  return h(`div.main.${drag}`, [
+function view (dragging, files, serverState) {
+  return h(`div.main.${dragging}`, [
     filesView(files),
+    serverState || 'choose some filez',
     Object.keys(files).length > 0 ? h('button.serve', 'serve') : null,
   ])
 }

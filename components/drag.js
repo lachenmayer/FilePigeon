@@ -1,12 +1,11 @@
 const action = require('../helpers/action')
 
-function intent (DOM) {
-  const container = DOM.select('#app')
-  const dragged$ = container.events('dragover').map(e => {
+function intent (dragTarget) {
+  const dragged$ = dragTarget.events('dragover').map(e => {
     e.preventDefault()
     return action('drag/drag', e)
   })
-  const dropped$ = container.events('drop').map(e => action('drag/drop', e))
+  const dropped$ = dragTarget.events('drop').map(e => action('drag/drop', e))
   return xs.merge(dragged$, dropped$)
 }
 
