@@ -5,6 +5,7 @@ const url = require('url')
 const xs = require('xstream').default
 
 const {makeIpcMainDriver} = require('./drivers/ipc')
+const serverDriver = require('./drivers/server')
 const zipDriver = require('./drivers/zip')
 
 const action = require('./helpers/action')
@@ -48,10 +49,7 @@ app.on('ready', () => {
 
     //
     // NEXT:
-    // - start serving (emitting actions)
     // - make served website
-    // - log access & dl speed
-    // - clean up temp dir
     //
 
     const serverStopAction$ = ofType(sources.renderer, 'server/stop')
@@ -62,15 +60,16 @@ app.on('ready', () => {
       .map(a => action('zip/remove', a.payload))
     const toZip$ = xs.merge(zipCreateAction$, zipRemoveAction$)
 
-    const fromZip$ = sources.zip.action$$.flatten()
-    const serverStartingAction$ = ofType(fromZip$, 'zip/starting')
-      .mapTo(action('server/starting'))
-    const serverReadyAction$ = ofType(fromZip$, 'zip/ready')
-      .mapTo(action('server/ready')) // TODO only emit when actually serving
-    const toRenderer$ = xs.merge(serverStartingAction$, serverReadyAction$, serverStopAction$).debug()
+    const serverStartAction$ = ofType(sources.zip, 'zip/ready')
+      .map(a => action('server/start', a.payload))
+
+    const toServer$ = xs.merge(serverStartAction$, serverStopAction$)
+
+    const toRenderer$ = xs.merge(sources.server, serverStartAction$, serverStopAction$).debug()
 
     const sinks = {
       renderer: toRenderer$,
+      server: toServer$,
       zip: toZip$,
     }
     return sinks
@@ -78,6 +77,7 @@ app.on('ready', () => {
 
   const drivers = {
     renderer: makeIpcMainDriver(win),
+    server: serverDriver,
     zip: zipDriver,
   }
 

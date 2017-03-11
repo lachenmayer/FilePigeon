@@ -29,7 +29,7 @@ function main (sources) {
   const filesState$ = files.model(filesAction$)
   const serverState$ = sources.server.fold((state, {type, payload}) => {
     switch (type) {
-      case 'server/starting': return 'starting'
+      case 'server/start': return 'starting'
       case 'server/ready': return 'serving'
       case 'server/stop': return 'stopped'
     }

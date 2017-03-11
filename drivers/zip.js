@@ -8,12 +8,10 @@ const ofType = require('../helpers/ofType')
 const temporaryDirectory = require('../helpers/temporaryDirectory')
 
 module.exports = function zipDriver (action$) {
-  const action$$ = ofType(action$, 'zip/create')
+  return ofType(action$, 'zip/create')
     .map(a => zipFile$(a.payload)
       .endWhen(ofType(action$, 'zip/remove')))
-  return {
-    action$$,
-  }
+    .flatten()
 }
 
 function zipFile$ (files) {
