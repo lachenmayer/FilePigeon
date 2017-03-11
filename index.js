@@ -3,6 +3,7 @@ const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
 const url = require('url')
 const xs = require('xstream').default
+const fromEvent = require('xstream/extra/fromEvent').default
 
 const {makeIpcMainDriver} = require('./drivers/ipc')
 const serverDriver = require('./drivers/server')
@@ -52,7 +53,9 @@ app.on('ready', () => {
     // - make served website
     //
 
-    const serverStopAction$ = ofType(sources.renderer, 'server/stop')
+    const serverStopOnAppQuit$ = fromEvent(app, 'quit').mapTo(action('server/stop'))
+    const serverStopByUser$ = ofType(sources.renderer, 'server/stop')
+    const serverStopAction$ = xs.merge(serverStopOnAppQuit$, serverStopByUser$)
 
     const zipCreateAction$ = ofType(sources.renderer, 'server/files')
       .map(a => action('zip/create', Object.values(a.payload)))

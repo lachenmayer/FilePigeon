@@ -3,6 +3,7 @@ const finalHandler = require('finalhandler')
 const fs = require('fs')
 const http = require('http')
 const parseUrl = require('parseurl')
+const makeProgressStream = require('progress-stream')
 const serveStatic = require('serve-static')
 const xs = require('xstream').default
 
@@ -20,17 +21,6 @@ module.exports = function serverDriver (action$) {
 function serveFile (filePath) {
   return xs.create({
     start: listener => {
-      // const app = express()
-      // app.get('/FilePigeon%20Drop.zip', (req, res) => {
-      //   listener.next(action('server/request/start', req.ip))
-      //   res.sendFile(filePath, err => {
-      //     if (err) {
-      //       listener.next(action('server/request/error', err))
-      //     } else {
-      //       listener.next(action('server/request/done'))
-      //     }
-      //   })
-      // })
       const zipUrl = encodeUrl('/' + userFacingName)
       const server = http.createServer((req, res) => {
         const done = finalHandler(req, res)
@@ -57,15 +47,30 @@ function serveFile (filePath) {
             if (req.method === 'HEAD') {
               return
             }
+
+            const progressStream = makeProgressStream({
+              length: size,
+              time: 100,
+            })
             const fileStream = fs.createReadStream(filePath, {encoding: null})
-            fileStream.pipe(res)
+
+            fileStream.pipe(progressStream)
+            progressStream.pipe(res)
+
+            progressStream.on('progress', progress => {
+              listener.next(action('server/request/progress', progress))
+            })
+
             fileStream.on('end', () => {
-              fileStream.unpipe(res)
+              fileStream.unpipe(progressStream)
+              progressStream.unpipe(res)
               res.end()
+              listener.next(action('server/request/done'))
             })
           })
           return
         }
+
         res.write('TODO')
         res.end()
         return
