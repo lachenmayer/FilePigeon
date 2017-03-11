@@ -1,11 +1,22 @@
 const archiver = require('archiver')
 const fs = require('fs')
+const path = require('path')
 const xs = require('xstream').default
 
-const action = require('./action')
-const temporaryDirectory = require('./temporaryDirectory')
+const action = require('../helpers/action')
+const ofType = require('../helpers/ofType')
+const temporaryDirectory = require('../helpers/temporaryDirectory')
 
-module.exports = function zipFile$ (files) {
+module.exports = function zipDriver (action$) {
+  const action$$ = ofType(action$, 'zip/create')
+    .map(a => zipFile$(a.payload)
+      .endWhen(ofType(action$, 'zip/remove')))
+  return {
+    action$$,
+  }
+}
+
+function zipFile$ (files) {
   if (files == null) {
     return xs.empty()
   }
@@ -14,12 +25,12 @@ module.exports = function zipFile$ (files) {
       const tmp = temporaryDirectory()
       this.tmp = tmp.subscribe({
         next: tmpPath => {
-          listener.next(action('zip/start'))
-
           const zipPath = path.join(tmpPath, 'archive.zip')
+          listener.next(action('zip/starting', zipPath))
+
           const zipStream = fs.createWriteStream(zipPath)
           zipStream.on('close', () => {
-            listener.next(action('zip/done', zipPath))
+            listener.next(action('zip/ready', zipPath))
           })
 
           const archive = archiver('zip')

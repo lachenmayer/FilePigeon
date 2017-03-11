@@ -1,6 +1,5 @@
 const {h, makeDOMDriver} = require('@cycle/dom')
 const {run} = require('@cycle/run')
-const {ipcRenderer} = require('electron')
 const xs = require('xstream').default
 const fromEvent = require('xstream/extra/fromEvent').default
 const sampleCombine = require('xstream/extra/sampleCombine').default
@@ -9,49 +8,71 @@ const drag = require('../components/drag')
 const files = require('../components/files')
 const filesView = files.view
 
+const {ipcRendererDriver} = require('../drivers/ipc')
+
 const action = require('../helpers/action')
 const combine = require('../helpers/combine')
-const makeIPCDriver = require('../helpers/makeIPCDriver')
 
 
 const drivers = {
-  DOM: makeDOMDriver('#app'),
-  mainActions: makeIPCDriver(ipcRenderer),
+  dom: makeDOMDriver('#app'),
+  server: ipcRendererDriver,
 }
 
-function main ({DOM, mainActions}) {
-  const dragAction$ = drag.intent(DOM.select('.main'))
-  const filesAction$ = files.intent(DOM)
+function main (sources) {
+  const dragAction$ = drag.intent(sources.dom.select('.picker'))
+  const filesAction$ = files.intent(sources.dom)
+  const serverStopAction$ = sources.dom.select('button.serverStop').events('click')
+    .mapTo(action('server/stop'))
 
-  const dragging$ = drag.model(dragAction$)
-  const files$ = files.model(filesAction$.debug())
-
-  const serverStart = DOM.select('.serve').events('click')
-    .compose(sampleCombine(files$))
-    .map(([_, files]) => action('server/start', files))
-
-  const serverState$ = mainActions.fold((state, {type, payload}) => {
+  const draggingState$ = drag.model(dragAction$)
+  const filesState$ = files.model(filesAction$)
+  const serverState$ = sources.server.fold((state, {type, payload}) => {
     switch (type) {
-      case 'zip/start': return 'zipping...'
-      case 'zip/done': return 'zip file ready!'
+      case 'server/starting': return 'starting'
+      case 'server/ready': return 'serving'
+      case 'server/stop': return 'stopped'
     }
-    return state
-  }, null)
+  }, 'stopped')
 
-  const view$ = xs.combine(dragging$, files$, serverState$).map(models => view(...models))
+  const view$ = combine({
+    dragging: draggingState$,
+    files: filesState$,
+    server: serverState$,
+  }).map(view)
+  const toDom$ = view$
+
+  const serverFilesAction$ = sources.dom.select('.serve').events('click')
+    .compose(sampleCombine(filesState$))
+    .map(([_, files]) => action('server/files', files))
+  const toServer$ = xs.merge(serverFilesAction$, serverStopAction$)
 
   return {
-    DOM: view$,
-    mainActions: serverStart,
+    dom: toDom$,
+    server: toServer$,
   }
 }
 
 run(main, drivers)
 
-function view (dragging, files, serverState) {
-  return h(`div.main.${dragging}`, [
+function view ({dragging, files, server}) {
+  if (server === 'stopped') {
+    return filePickerView(dragging, files)
+  } else {
+    return servingView(server)
+  }
+}
+
+function filePickerView (dragging, files) {
+  return h(`div.container.picker.${dragging}`, [
     filesView(files),
-    serverState || 'choose some filez',
     Object.keys(files).length > 0 ? h('button.serve', 'serve') : null,
+  ])
+}
+
+function servingView (serverState) {
+  return h('div.container.serving', [
+    serverState,
+    h('button.serverStop', 'stop')
   ])
 }

@@ -4,13 +4,14 @@ const path = require('path')
 const url = require('url')
 const xs = require('xstream').default
 
-const makeIPCDriver = require('./helpers/makeIPCDriver')
-const zipFile$ = require('./helpers/zipFile')
+const {makeIpcMainDriver} = require('./drivers/ipc')
+const zipDriver = require('./drivers/zip')
 
-let win
+const action = require('./helpers/action')
+const ofType = require('./helpers/ofType')
 
 function createWindow () {
-  win = new BrowserWindow({width: 300, height: 300, background: '#ff9600'})
+  let win = new BrowserWindow({width: 300, height: 300, background: '#ff9600'})
 
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'renderer', 'index.html'),
@@ -29,54 +30,56 @@ function createWindow () {
   win.on('closed', () => {
     win = null
   })
-}
 
-app.on('ready', createWindow)
-app.on('window-all-closed', () => { app.quit() })
-app.on('activate', () => {
-  if (win === null) {
-    createWindow()
-  }
-})
-
-
-function main ({rendererActions, zip}) {
-
-  //
-  // NEXT:
-  // - start serving (emitting actions)
-  // - make served website
-  // - log access & dl speed
-  // - clean up temp dir
-  //
-
-  const serverActions$ = rendererActions
-    .filter(a => a.type.startsWith('server/'))
-
-  const files$ = serverActions$.fold((_, {type, payload}) => {
-    switch (type) {
-      case 'server/start': return Object.values(payload)
-      case 'server/stop': return null
+  app.on('window-all-closed', () => { app.quit() })
+  app.on('activate', () => {
+    if (win === null) {
+      createWindow()
     }
-    return _
-  }, null)
+  })
 
-  return {
-    rendererActions: zip,
-    zip: files$,
+  return win
+}
+
+app.on('ready', () => {
+  const win = createWindow()
+
+  function main (sources) {
+
+    //
+    // NEXT:
+    // - start serving (emitting actions)
+    // - make served website
+    // - log access & dl speed
+    // - clean up temp dir
+    //
+
+    const serverStopAction$ = ofType(sources.renderer, 'server/stop')
+
+    const zipCreateAction$ = ofType(sources.renderer, 'server/files')
+      .map(a => action('zip/create', Object.values(a.payload)))
+    const zipRemoveAction$ = serverStopAction$
+      .map(a => action('zip/remove', a.payload))
+    const toZip$ = xs.merge(zipCreateAction$, zipRemoveAction$)
+
+    const fromZip$ = sources.zip.action$$.flatten()
+    const serverStartingAction$ = ofType(fromZip$, 'zip/starting')
+      .mapTo(action('server/starting'))
+    const serverReadyAction$ = ofType(fromZip$, 'zip/ready')
+      .mapTo(action('server/ready')) // TODO only emit when actually serving
+    const toRenderer$ = xs.merge(serverStartingAction$, serverReadyAction$, serverStopAction$).debug()
+
+    const sinks = {
+      renderer: toRenderer$,
+      zip: toZip$,
+    }
+    return sinks
   }
-}
 
-const drivers = {
-  rendererActions: makeIPCDriver(ipcMain),
-  zip: zipDriver,
-}
+  const drivers = {
+    renderer: makeIpcMainDriver(win),
+    zip: zipDriver,
+  }
 
-function zipDriver (files$) {
-  return files$
-    .filter(files => files != null)
-    .map(zipFile$)
-    .flatten()
-}
-
-run(main, drivers)
+  run(main, drivers)
+})

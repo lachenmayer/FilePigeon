@@ -2,7 +2,7 @@ body {
   margin: 0;
 }
 
-.main {
+.container {
   position: absolute;
   top: 0;
   left: 0;
@@ -18,10 +18,14 @@ body {
   height: 90%;
 }
 
-.none .files {
-  background: white;
+.picker {
+  background: #09f;
 }
 
-.dragging .files {
-  background: red;
+.picker.dragging {
+  background: #f90;
+}
+
+.serving {
+  background: #0f9;
 }
