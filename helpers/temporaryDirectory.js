@@ -18,7 +18,9 @@ module.exports = function temporaryDirectory () {
       })
     },
     stop: function () {
-      rimraf(this.dir)
+      rimraf(this.dir, err => {
+        if (err) console.error(err)
+      })
     },
     dir: null,
   })

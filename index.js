@@ -1,5 +1,5 @@
 const {run} = require('@cycle/run')
-const {app, BrowserWindow, ipcMain} = require('electron')
+const {app, BrowserWindow, ipcMain, shell} = require('electron')
 const path = require('path')
 const url = require('url')
 const xs = require('xstream').default
@@ -30,6 +30,11 @@ function createWindow () {
 
   win.webContents.on('new-window', event => {
     event.preventDefault()
+  })
+
+  win.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault()
+    // shell.openExternal(url)
   })
 
   app.on('window-all-closed', () => { app.quit() })

@@ -35,7 +35,7 @@ function zipFile$ (files) {
           archive.pipe(zipStream)
 
           files.forEach(file => {
-            archive.file(file.path, {name: file.name, prefix: 'droppah'})
+            archive.file(file.path, {name: file.name, prefix: 'FilePigeon Drop'})
           })
           archive.finalize()
         }

@@ -1573,7 +1573,7 @@ des.js@^1.0.0:
     inherits "^2.0.1"
     minimalistic-assert "^1.0.0"
 
-destroy@~1.0.4:
+destroy@^1.0.4, destroy@~1.0.4:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/destroy/-/destroy-1.0.4.tgz#978857442c44749e4206613e37946205826abd80"
 
@@ -3052,7 +3052,7 @@ obuf@^1.0.0, obuf@^1.1.0:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/obuf/-/obuf-1.1.1.tgz#104124b6c602c6796881a042541d36db43a5264e"
 
-on-finished@~2.3.0:
+on-finished@^2.3.0, on-finished@~2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/on-finished/-/on-finished-2.3.0.tgz#20f1336481b083cd75337992a16971aa2d906947"
   dependencies:
@@ -3982,9 +3982,25 @@ snabbdom-to-html@3.0.1:
     object-assign "^4.1.0"
     parse-sel "^1.0.0"
 
+snabbdom-to-html@^3.1.1:
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/snabbdom-to-html/-/snabbdom-to-html-3.1.1.tgz#733fcf33c0bb60d73622e47b15740a9e5c9e7cd4"
+  dependencies:
+    lodash.escape "^4.0.1"
+    lodash.forown "^4.4.0"
+    lodash.kebabcase "^4.1.1"
+    lodash.remove "^4.7.0"
+    lodash.uniq "^4.5.0"
+    object-assign "^4.1.0"
+    parse-sel "^1.0.0"
+
 snabbdom@0.6.5:
   version "0.6.5"
   resolved "https://registry.yarnpkg.com/snabbdom/-/snabbdom-0.6.5.tgz#01b0cba8d623eca19e570876630c12c057830066"
+
+snabbdom@^0.6.7:
+  version "0.6.7"
+  resolved "https://registry.yarnpkg.com/snabbdom/-/snabbdom-0.6.7.tgz#045d9fc292574fe3597578bde2d9c403f79a1352"
 
 sntp@1.x.x:
   version "1.0.9"

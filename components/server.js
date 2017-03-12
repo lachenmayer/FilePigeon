@@ -37,6 +37,9 @@ function model (action$) {
         address: payload,
         requests: {},
       }
+      case 'server/request/view': return request({
+        state: 'seen',
+      })
       case 'server/request/start': return request({
         state: 'starting',
       })
@@ -58,7 +61,7 @@ function model (action$) {
 function view ({state, address, requests}) {
   return h(`div.container.server.${state}`, [
     state,
-    address ? h('a', {href: address}, address) : null,
+    address ? h('a', {attrs: {href: address}}, address) : null,
     requests ? h('div.requests', Object.values(requests).map(({state, progress}) => h('div', [
       state,
       progress ? progress.percentage : null,
