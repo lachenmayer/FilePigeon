@@ -14,7 +14,9 @@ const action = require('./helpers/action')
 const ofType = require('./helpers/ofType')
 
 function createWindow () {
-  let win = new BrowserWindow({width: 300, height: 300, background: '#ff9600'})
+  let win = new BrowserWindow({width: 300, height: 300, background: '#ff9600', show: false})
+  win.on('ready-to-show', () => { win.show() })
+  win.on('closed', () => { win = null })
 
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'renderer', 'index.html'),
@@ -30,16 +32,7 @@ function createWindow () {
     event.preventDefault()
   })
 
-  win.on('closed', () => {
-    win = null
-  })
-
   app.on('window-all-closed', () => { app.quit() })
-  app.on('activate', () => {
-    if (win === null) {
-      createWindow()
-    }
-  })
 
   return win
 }
