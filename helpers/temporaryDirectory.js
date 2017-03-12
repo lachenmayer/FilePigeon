@@ -18,7 +18,7 @@ module.exports = function temporaryDirectory () {
       })
     },
     stop: function () {
-      rimraf.sync(this.dir)
+      rimraf(this.dir)
     },
     dir: null,
   })
