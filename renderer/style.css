@@ -26,6 +26,14 @@ body {
   background: #f90;
 }
 
-.serving {
+.server.zipping {
+  background: #f09;
+}
+
+.server.starting {
+  background: #ff9;
+}
+
+.server.serving {
   background: #0f9;
 }

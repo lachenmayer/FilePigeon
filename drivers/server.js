@@ -1,9 +1,12 @@
 const encodeUrl = require('encodeurl')
+const contentDisposition = require('content-disposition')
 const cuid = require('cuid')
 const finalHandler = require('finalhandler')
 const fs = require('fs')
 const http = require('http')
+const internalIp = require('internal-ip')
 const parseUrl = require('parseurl')
+const path = require('path')
 const makeProgressStream = require('progress-stream')
 const serveStatic = require('serve-static')
 const xs = require('xstream').default
@@ -12,20 +15,19 @@ const action = require('../helpers/action')
 const ofType = require('../helpers/ofType')
 
 const userFacingName = 'FilePigeon Drop.zip'
-const downloadUrl = '/drop'
 
 module.exports = function serverDriver (action$) {
   return ofType(action$, 'server/start')
-    .map(a => serveFile(a.payload).endWhen(ofType(action$, 'server/stop')))
+    .map(({type, payload: {archivePath, files}}) => serveArchive(archivePath, files)
+      .endWhen(ofType(action$, 'server/stop')))
     .flatten()
 }
 
-function serveFile (filePath) {
+function serveArchive (archivePath, files) {
   return xs.create({
     start: listener => {
       const server = http.createServer((req, res) => {
         const onError = finalHandler(req, res)
-        const download = downloadHandler(req, res)
 
         if (req.method === 'OPTIONS') {
           res.setHeader('Allow', 'HEAD, GET')
@@ -37,18 +39,22 @@ function serveFile (filePath) {
         }
 
         const url = parseUrl(req)
-        const path = url.pathname
-        if (path === downloadUrl) {
-          return download(filePath, listener.next, onError)
+        switch (url.pathname) {
+          case '/drop': {
+            const download = downloadHandler(req, res)
+            return download(archivePath, a => listener.next(a), onError)
+          }
+          default: {
+            const serve = serveStatic('downloader', {dotfiles: 'ignore'})
+            return serve(req, res, onError)
+          }
         }
-
-        res.write('TODO')
-        res.end()
-        return
       })
       server.listen(() => {
         const port = server.address().port
-        listener.next(action('server/ready', port))
+        const ip = internalIp.v4()
+        const address = `http://${ip}:${port}/`
+        listener.next(action('server/ready', address))
       })
       this.server = server
     },
@@ -59,10 +65,10 @@ function serveFile (filePath) {
 }
 
 function downloadHandler (req, res) {
-  return function (filePath, onUpdate, onError) {
+  return function (archivePath, onUpdate, onError) {
     const id = cuid()
     onUpdate(action('server/request/start', {id}))
-    fs.stat(filePath, (err, stats) => {
+    fs.stat(archivePath, (err, stats) => {
       if (err) {
         return onError(err)
       }
@@ -82,7 +88,7 @@ function downloadHandler (req, res) {
         length: size,
         time: 100,
       })
-      const fileStream = fs.createReadStream(filePath, {encoding: null})
+      const fileStream = fs.createReadStream(archivePath, {encoding: null})
 
       fileStream.pipe(progressStream)
       progressStream.pipe(res)

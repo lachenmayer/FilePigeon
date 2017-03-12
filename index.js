@@ -4,6 +4,7 @@ const path = require('path')
 const url = require('url')
 const xs = require('xstream').default
 const fromEvent = require('xstream/extra/fromEvent').default
+const sampleCombine = require('xstream/extra/sampleCombine').default
 
 const {makeIpcMainDriver} = require('./drivers/ipc')
 const serverDriver = require('./drivers/server')
@@ -50,25 +51,34 @@ app.on('ready', () => {
 
     //
     // NEXT:
-    // - make served website
-    //
+    // - display file list in website
+    // - fix directories in zips
+    // - what to do with single zips? take forever to re-zip
 
     const serverStopOnAppQuit$ = fromEvent(app, 'quit').mapTo(action('server/stop'))
     const serverStopByUser$ = ofType(sources.renderer, 'server/stop')
     const serverStopAction$ = xs.merge(serverStopOnAppQuit$, serverStopByUser$)
 
-    const zipCreateAction$ = ofType(sources.renderer, 'server/files')
-      .map(a => action('zip/create', Object.values(a.payload)))
+    const files$ = ofType(sources.renderer, 'server/files')
+      .map(action => Object.values(action.payload))
+
+    const zipCreateAction$ = files$
+      .map(files => action('zip/create', files))
     const zipRemoveAction$ = serverStopAction$
       .map(a => action('zip/remove', a.payload))
     const toZip$ = xs.merge(zipCreateAction$, zipRemoveAction$)
 
     const serverStartAction$ = ofType(sources.zip, 'zip/ready')
-      .map(a => action('server/start', a.payload))
-
+      .compose(sampleCombine(files$))
+      .map(([zipReadyAction, files]) => action('server/start', {
+        archivePath: zipReadyAction.payload,
+        files,
+      }))
     const toServer$ = xs.merge(serverStartAction$, serverStopAction$)
 
-    const toRenderer$ = xs.merge(sources.server, serverStartAction$, serverStopAction$).debug()
+    const serverZippingAction$ = ofType(sources.zip, 'zip/starting')
+      .mapTo(action('server/zipping'))
+    const toRenderer$ = xs.merge(sources.server, serverZippingAction$, serverStartAction$, serverStopAction$).debug()
 
     const sinks = {
       renderer: toRenderer$,
