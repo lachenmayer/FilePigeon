@@ -1,6 +1,7 @@
 const encodeUrl = require('encodeurl')
 const contentDisposition = require('content-disposition')
 const destroy = require('destroy')
+const fileSize = require('filesize')
 const finalHandler = require('finalhandler')
 const fs = require('fs')
 const http = require('http')
@@ -21,12 +22,12 @@ const userFacingName = 'FilePigeon Drop.zip'
 
 module.exports = function serverDriver (action$) {
   return ofType(action$, 'server/start')
-    .map(({type, payload: {archivePath, files}}) => serveArchive(archivePath, files)
+    .map(({type, payload: {archive, files}}) => serveArchive(archive, files)
       .endWhen(ofType(action$, 'server/stop')))
     .flatten()
 }
 
-function serveArchive (archivePath, files) {
+function serveArchive (archive, files) {
   return xs.create({
     start: listener => {
       const server = http.createServer((req, res) => {
@@ -47,13 +48,13 @@ function serveArchive (archivePath, files) {
         switch (url.pathname) {
           case '/drop': {
             const download = downloadHandler(req, res, id)
-            return download(archivePath, a => listener.next(a), onError)
+            return download(archive, a => listener.next(a), onError)
           }
           case '/':
           case '/index.html': {
             listener.next(action('server/request/view', {id}))
             const html = htmlHandler(req, res)
-            return html(template(files))
+            return html(template(archive, files))
           }
           default: {
             const serve = serveStatic('downloader', {dotfiles: 'ignore', index: false})
@@ -76,41 +77,33 @@ function serveArchive (archivePath, files) {
 }
 
 function downloadHandler (req, res, id) {
-  return function (archivePath, onUpdate, onError) {
+  return function (archive, onUpdate, onError) {
     onUpdate(action('server/request/start', {id}))
-    fs.stat(archivePath, (err, stats) => {
-      if (err) {
-        return onError(err)
-      }
 
-      const {mtime, size} = stats
+    res.setHeader('Content-Type', 'application/zip')
+    res.setHeader('Content-Length', archive.size)
+    res.setHeader('Content-Disposition', contentDisposition(userFacingName))
 
-      res.setHeader('Content-Type', 'application/zip')
-      res.setHeader('Content-Length', size)
-      res.setHeader('Content-Disposition', contentDisposition(userFacingName))
-      res.setHeader('Last-Modified', mtime.toUTCString())
+    if (req.method === 'HEAD') {
+      return res.end()
+    }
 
-      if (req.method === 'HEAD') {
-        return res.end()
-      }
+    const progressStream = makeProgressStream({
+      length: archive.size,
+      time: 100,
+    })
+    const fileStream = fs.createReadStream(archive.path, {encoding: null})
 
-      const progressStream = makeProgressStream({
-        length: size,
-        time: 100,
-      })
-      const fileStream = fs.createReadStream(archivePath, {encoding: null})
+    fileStream.pipe(progressStream)
+    progressStream.pipe(res)
 
-      fileStream.pipe(progressStream)
-      progressStream.pipe(res)
+    progressStream.on('progress', progress => {
+      onUpdate(action('server/request/progress', {id, progress}))
+    })
 
-      progressStream.on('progress', progress => {
-        onUpdate(action('server/request/progress', {id, progress}))
-      })
-
-      onFinished(res, () => {
-        destroy(fileStream)
-        onUpdate(action('server/request/done', {id}))
-      })
+    onFinished(res, () => {
+      destroy(fileStream)
+      onUpdate(action('server/request/done', {id}))
     })
   }
 }
@@ -123,13 +116,13 @@ function htmlHandler (req, res) {
   }
 }
 
-function template (files) {
-   const fileList = h('div.files',
+function template (archive, files) {
+  const fileList = h('div.files',
     files.map(file =>
       h('div.file', file.name)
     )
   )
-   return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -139,6 +132,7 @@ function template (files) {
 <body>
 <p>this is ur file pigeon :-)</p>
 ${toHtml(fileList)}
+${fileSize(archive.size)}
 <p><a href="/drop">click here</a> to get ur droppings</p>
 </body>
 </html>`

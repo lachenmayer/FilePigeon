@@ -5,7 +5,6 @@ const fromEvent = require('xstream/extra/fromEvent').default
 
 const drag = require('../components/drag')
 const files = require('../components/files')
-const filesView = files.view
 const server = require('../components/server')
 
 const {ipcRendererDriver} = require('../drivers/ipc')
@@ -45,6 +44,13 @@ function main (sources) {
 
 run(main, drivers)
 
+var grow = {
+  'font-size': 0,
+  transition: 'font-size 200ms',
+  delayed: {'font-size': '1em'},
+  remove: {'font-size': 0},
+}
+
 function view ({dragging, files, server: serverState}) {
   if (serverState.state === 'stopped') {
     return filePickerView(dragging, files)
@@ -54,8 +60,43 @@ function view ({dragging, files, server: serverState}) {
 }
 
 function filePickerView (dragging, files) {
-  return h(`div.container.picker.${dragging}`, [
-    filesView(files),
-    Object.keys(files).length > 0 ? h('button.serve', 'serve') : null,
+  const children = Object.keys(files).length > 0
+    ? filesView(files)
+    : introView()
+
+  return h('div.container.picker',
+    {style: {background: dragging === 'none' ? '#09f' : '#3bf', transition: 'background 200ms'}},
+    children
+  )
+}
+
+function introView () {
+  return h('div.center', [
+    h('div.intro', {style: grow}, [
+      h('h1', [h('span.headerFile', 'File'), h('span.headerPigeon', 'Pigeon')]),
+      h('p', 'drop files to start the flight')
+    ])
+  ])
+}
+
+function filesView (files) {
+  const fileList = Object.values(files)
+  const size = fileList.map(file => file.size).reduce((a, b) => a + b, 0)
+  return h('div.files', [
+    h('div.centerVertical', [
+      h('div.list', {style: grow},
+        fileList.map(file =>
+          h('div.file', {style: grow}, [
+            h('span.fileName', file.name),
+            ' ',
+            h('button.removeFile', {dataset: {path: file.path}}, 'x')
+          ])
+        )
+      ),
+    ]),
+    h('div.buttons', {style: grow}, [
+      h('button.serve', 'serve'),
+      h('button.clearFiles', 'clear'),
+    ])
   ])
 }

@@ -14,7 +14,12 @@ const action = require('./helpers/action')
 const ofType = require('./helpers/ofType')
 
 function createWindow () {
-  let win = new BrowserWindow({width: 300, height: 300, background: '#ff9600', show: false})
+  let win = new BrowserWindow({
+    width: 500,
+    height: 500,
+    show: false,
+    titleBarStyle: 'hidden',
+  })
   win.on('ready-to-show', () => { win.show() })
   win.on('closed', () => { win = null })
 
@@ -24,17 +29,17 @@ function createWindow () {
     slashes: true,
   }))
 
-  win.webContents.on('will-navigate', event => {
-    event.preventDefault()
-  })
-
   win.webContents.on('new-window', event => {
     event.preventDefault()
   })
 
+  // This event is triggered by dragging files.
+  // Ignore those, and open web links in the browser.
   win.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
-    // shell.openExternal(url)
+    if (url.startsWith('http://')) {
+      shell.openExternal(url)
+    }
   })
 
   app.on('window-all-closed', () => { app.quit() })
@@ -46,13 +51,6 @@ app.on('ready', () => {
   const win = createWindow()
 
   function main (sources) {
-
-    //
-    // NEXT:
-    // - display file list in website
-    // - fix directories in zips
-    // - what to do with single zips? take forever to re-zip
-
     const serverStopOnAppQuit$ = fromEvent(app, 'quit').mapTo(action('server/stop'))
     const serverStopByUser$ = ofType(sources.renderer, 'server/stop')
     const serverStopAction$ = xs.merge(serverStopOnAppQuit$, serverStopByUser$)
@@ -69,7 +67,7 @@ app.on('ready', () => {
     const serverStartAction$ = ofType(sources.zip, 'zip/ready')
       .compose(sampleCombine(files$))
       .map(([zipReadyAction, files]) => action('server/start', {
-        archivePath: zipReadyAction.payload,
+        archive: zipReadyAction.payload,
         files,
       }))
     const toServer$ = xs.merge(serverStartAction$, serverStopAction$)

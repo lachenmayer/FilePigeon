@@ -3,6 +3,7 @@ const xs = require('xstream').default
 const fromEvent = require('xstream/extra/fromEvent').default
 
 const action = require('../helpers/action')
+const {log} = require('../helpers/debug')
 
 function intent (dom) {
   const files$ = fromEvent(document.body, 'drop')

@@ -2,28 +2,69 @@ body {
   margin: 0;
 }
 
+button {
+  -webkit-app-region: no-drag;
+  all: unset;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .container {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  cursor: default;
+  font-family: Helvetica, Arial, sans-serif;
+  color: white;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 18px;
 }
 
-.files {
+.center {
+  text-align: center;
   margin: auto;
-  width: 90%;
-  height: 90%;
 }
 
-.picker {
-  background: #09f;
+.centerVertical {
+  margin: auto 0;
 }
 
-.picker.dragging {
-  background: #f90;
+.intro h1 {
+  margin: 5px 0;
+  margin: 0;
+}
+
+.intro h1 .headerFile {
+  font-style: normal;
+}
+
+.intro p {
+  margin: 5px 0;
+  font-size: 0.7em;
+}
+
+.list {
+  margin: 30px 5px 45px 5px;
+}
+
+.file {
+  line-height: 1;
+  margin: 1em 0;
+}
+
+.file .removeFile {
+  opacity: 0;
+}
+
+.file:hover .removeFile {
+  opacity: 1;
 }
 
 .server.zipping {
@@ -36,4 +77,18 @@ body {
 
 .server.serving {
   background: #0f9;
+}
+
+.buttons {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+}
+
+.buttons button {
+  padding: 10px;
+}
+
+.buttons .serve {
+  font-size: 2em;
 }
