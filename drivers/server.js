@@ -19,20 +19,18 @@ const xs = require('xstream').default
 const action = require('../helpers/action')
 const ofType = require('../helpers/ofType')
 
-const userFacingName = 'FilePigeon Drop.zip'
-
 module.exports = function serverDriver (action$) {
   return ofType(action$, 'server/start')
-    .map(({type, payload: {archive, files}}) => serveArchive(archive, files)
+    .map(({type, payload}) => serveArchive(payload)
       .endWhen(ofType(action$, 'server/stop')))
     .flatten()
 }
 
-function serveArchive (archive, files) {
+function serveArchive (archive) {
   return xs.create({
     start: listener => {
       const server = http.createServer((req, res) => {
-        const id = req.connection.remoteAddress
+        const id = req.connection.remoteAddress + ':' + req.connection.remotePort
 
         const onError = finalHandler(req, res)
 
@@ -55,7 +53,7 @@ function serveArchive (archive, files) {
           case '/index.html': {
             listener.next(action('server/request/view', {id}))
             const html = htmlHandler(req, res)
-            return html(template(archive, files))
+            return html(template(archive))
           }
           case '/alive': {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -94,7 +92,8 @@ function downloadHandler (req, res, id) {
 
     res.setHeader('Content-Type', 'application/zip')
     res.setHeader('Content-Length', archive.size)
-    res.setHeader('Content-Disposition', contentDisposition(userFacingName))
+    const name = archive.name || 'archive'
+    res.setHeader('Content-Disposition', contentDisposition(name + '.zip'))
 
     if (req.method === 'HEAD') {
       return res.end()
@@ -128,20 +127,21 @@ function htmlHandler (req, res) {
   }
 }
 
-function template (archive, files) {
+function template (archive) {
   const content = h('div.container', [
     h('div.header', [
       h('h1#title', 'These files are for you! :)'),
       h('p#error'),
     ]),
     h('div#files', [
+      archive.name ? h('h2.archiveName', archive.name) : '',
       h('div.list',
-        files.map(file =>
+        archive.files.map(file =>
           h('div.file', file.name)
         )
       ),
       h('div.download', [
-        h('a#link.primary', {attrs: {href: '/drop'}}, 'download all files'),
+        h('a#link.primary', {attrs: {href: '/drop'}}, 'download'),
         ' ',
         h('span.fileSize', fileSize(archive.size)),
       ]),

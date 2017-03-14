@@ -6,7 +6,7 @@ const fromEvent = require('xstream/extra/fromEvent').default
 const sampleCombine = require('xstream/extra/sampleCombine').default
 
 const drag = require('../components/drag')
-const files = require('../components/files')
+const archive = require('../components/archive')
 const server = require('../components/server')
 
 const {ipcRendererDriver} = require('../drivers/ipc')
@@ -26,10 +26,10 @@ function main (sources) {
   const dragAction$ = drag.intent(sources.dom.select('.picker'))
   const dragState$ = drag.model(dragAction$)
 
-  const filesAction$ = files.intent(sources.dom)
-  const filesState$ = files.model(filesAction$)
+  const archiveAction$ = archive.intent(sources.dom)
+  const archiveState$ = archive.model(archiveAction$)
 
-  const serverAction$ = server.intent(sources.dom, filesState$)
+  const serverAction$ = server.intent(sources.dom, archiveState$)
   const serverState$ = server.model(sources.server)
   const toServer$ = serverAction$
 
@@ -49,7 +49,7 @@ function main (sources) {
 
   const view$ = combine({
     dragging: dragState$,
-    files: filesState$,
+    archive: archiveState$,
     server: serverState$,
     copied: copiedFeedback$,
   }).map(view)
@@ -71,10 +71,10 @@ var grow = {
   remove: {'font-size': 0},
 }
 
-function view ({dragging, files, server, copied}) {
+function view ({dragging, archive, server, copied}) {
   const serverStopped = server.state === 'stopped'
   const serverStarting = server.state === 'zipping' || server.state === 'starting'
-  const hasFiles = Object.keys(files).length > 0
+  const hasFiles = Object.keys(archive.files).length > 0
   const isDragging = dragging !== 'none'
   const background = serverStopped
     ? isDragging
@@ -86,7 +86,7 @@ function view ({dragging, files, server, copied}) {
   return h(`div.container`, {class: {picker: serverStopped}, style: {background, transition: 'background 400ms'}},
     serverStopped
       ? hasFiles
-        ? filesView(files)
+        ? filesView(archive)
         : introView()
       : serverStarting
         ? serverStartingView(server.state)
@@ -103,21 +103,20 @@ function introView () {
   ])
 }
 
-function filesView (files) {
-  const fileList = Object.values(files)
+function filesView (archive) {
+  const fileList = Object.values(archive.files)
   const size = fileList.map(file => file.size).reduce((a, b) => a + b, 0)
   return h('div.files.picker', [
-    h('div.centerVertical', [
-      h('div.list', {style: grow},
-        fileList.map(file =>
-          h('div.file', {style: grow}, [
-            h('span.fileName', file.name),
-            ' ',
-            h('button.removeFile', {dataset: {path: file.path}}, 'x')
-          ])
-        )
-      ),
-    ]),
+    h('input.archiveName', {attrs: {type: 'text', placeholder: 'untitled', value: archive.name}}),
+    h('div.list', {style: grow},
+      fileList.map(file =>
+        h('div.file', {style: grow}, [
+          h('span.fileName', file.name),
+          ' ',
+          h('button.removeFile', {dataset: {path: file.path}}, 'x')
+        ])
+      )
+    ),
     h('div.buttons', {style: grow}, [
       h('button.primary.serve', 'start sharing'),
       h('button.clearFiles', 'clear'),

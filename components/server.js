@@ -2,10 +2,11 @@ const {h} = require('@cycle/dom')
 const xs = require('xstream').default
 const sampleCombine = require('xstream/extra/sampleCombine').default
 
-function intent (dom, filesState$) {
+function intent (dom, archiveState$) {
   const serverFilesAction$ = dom.select('.serve').events('click')
-    .compose(sampleCombine(filesState$))
-    .map(([_, files]) => action('server/files', files))
+    .compose(sampleCombine(archiveState$))
+    .map(([_, archive]) => Object.assign({}, archive, {files: Object.values(archive.files)}))
+    .map(archive => action('server/archive', archive))
   const serverStopAction$ = dom.select('button.serverStop').events('click')
     .mapTo(action('server/stop'))
   return xs.merge(serverFilesAction$, serverStopAction$)

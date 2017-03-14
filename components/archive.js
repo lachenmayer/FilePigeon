@@ -15,40 +15,56 @@ function intent (dom) {
       type: f.type,
     })))
   const add$ = files$
-    .map(files => action('files/add', files))
+    .map(files => action('archive/add', files))
   const remove$ = dom
     .select('.removeFile')
     .events('click')
     .map(e => {
       const path = e.target.dataset.path
-      return action('files/remove', path)
+      return action('archive/remove', path)
     })
   const clear$ = dom
     .select('.clearFiles')
     .events('click')
-    .mapTo(action('files/clear'))
-  return xs.merge(add$, remove$, clear$)
+    .mapTo(action('archive/clear'))
+  const name$ = dom
+    .select('.archiveName')
+    .events('input')
+    .map(e => action('archive/name', event.target.value))
+  return xs.merge(add$, remove$, clear$, name$)
 }
 
 function model (action$) {
-  return action$.fold((files, {type, payload}) => {
+  const initial = {
+    files: {},
+    name: '',
+  }
+  return action$.fold((model, {type, payload}) => {
     const u = (base, diff) => Object.assign({}, base, diff)
     switch (type) {
-      case 'files/add':
-        const filesByPath = {}
+      case 'archive/add': {
+        const files = {}
         payload.forEach(file => {
-          filesByPath[file.path] = file
+          files[file.path] = file
         })
-        return u(files, filesByPath)
-      case 'files/remove':
-        const newFiles = u(files)
-        delete newFiles[payload]
-        return newFiles
-      case 'files/clear':
-        return {}
+        return u(model, {files})
+      }
+      case 'archive/remove': {
+        const files = u(model.files)
+        delete files[payload]
+        return u(model, {files})
+      }
+      case 'archive/clear': {
+        const files = {}
+        return u(model, {files})
+      }
+      case 'archive/name': {
+        const name = payload
+        return u(model, {name})
+      }
     }
-    return files
-  }, {})
+    return model
+  }, initial)
 }
 
 module.exports = {

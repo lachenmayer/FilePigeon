@@ -55,21 +55,23 @@ app.on('ready', () => {
     const serverStopByUser$ = ofType(sources.renderer, 'server/stop')
     const serverStopAction$ = xs.merge(serverStopOnAppQuit$, serverStopByUser$)
 
-    const files$ = ofType(sources.renderer, 'server/files')
-      .map(action => Object.values(action.payload))
+    const archive$ = ofType(sources.renderer, 'server/archive')
+      .map(a => a.payload)
 
-    const zipCreateAction$ = files$
-      .map(files => action('zip/create', files))
+    const zipCreateAction$ = archive$
+      .map(archive => action('zip/create', archive.files))
     const zipRemoveAction$ = serverStopAction$
       .map(a => action('zip/remove', a.payload))
     const toZip$ = xs.merge(zipCreateAction$, zipRemoveAction$)
 
     const serverStartAction$ = ofType(sources.zip, 'zip/ready')
-      .compose(sampleCombine(files$))
-      .map(([zipReadyAction, files]) => action('server/start', {
-        archive: zipReadyAction.payload,
-        files,
-      }))
+      .compose(sampleCombine(archive$))
+      .map(([zipReadyAction, archive]) => Object.assign({}, archive, zipReadyAction.payload))
+      .map(archive => {
+        archive.title = archive.title || 'FilePigeon Drop' // set default title
+        return archive
+      })
+      .map(archive => action('server/start', archive))
     const toServer$ = xs.merge(serverStartAction$, serverStopAction$)
 
     const serverZippingAction$ = ofType(sources.zip, 'zip/starting')
