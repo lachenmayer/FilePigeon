@@ -11,6 +11,7 @@ const parseUrl = require('parseurl')
 const path = require('path')
 const makeProgressStream = require('progress-stream')
 const serveStatic = require('serve-static')
+const serverDestroy = require('server-destroy')
 const h = require('snabbdom/h').default
 const toHtml = require('snabbdom-to-html')
 const xs = require('xstream').default
@@ -56,6 +57,10 @@ function serveArchive (archive, files) {
             const html = htmlHandler(req, res)
             return html(template(archive, files))
           }
+          case '/alive': {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+            res.end()
+          }
           default: {
             const serve = serveStatic('downloader', {dotfiles: 'ignore', index: false})
             return serve(req, res, onError)
@@ -70,10 +75,15 @@ function serveArchive (archive, files) {
         listener.next(action('server/ready', address))
       })
 
+      // Enables `destroy` method, which closes the server and also closes all
+      // connections currently on the server. Needed for heartbeats, as otherwise
+      // the connection to the server will stay open even after the server is closed.
+      serverDestroy(server)
+
       this.server = server
     },
     stop: () => {
-      this.server.close()
+      this.server.destroy()
     }
   })
 }
@@ -121,23 +131,23 @@ function htmlHandler (req, res) {
 function template (archive, files) {
   const content = h('div.container', [
     h('div.header', [
-      h('h1', 'These files are for you! :)'),
+      h('h1#title', 'These files are for you! :)'),
+      h('p#error'),
     ]),
-    h('div.wrapper', [
-      h('div.files',
+    h('div#files', [
+      h('div.list',
         files.map(file =>
           h('div.file', file.name)
         )
       ),
       h('div.download', [
-        h('a.primary', {attrs: {href: '/drop'}}, 'download all files'),
+        h('a#link.primary', {attrs: {href: '/drop'}}, 'download all files'),
         ' ',
         h('span.fileSize', fileSize(archive.size)),
       ]),
     ]),
     h('div.footer', [
-      h('p', 'These files were shared with FilePigeon.'),
-      h('p', 'FilePigeon lets you share files with people on the same network (eg. same WiFi) without having to upload the files to the "cloud".'),
+      h('p', 'Your friend is using FilePigeon to send you these files directly from their computer to yours, without having to upload the files to the "cloud".'),
     ]),
   ])
   return `<!DOCTYPE html>
@@ -149,6 +159,7 @@ function template (archive, files) {
 </head>
 <body>
 ${toHtml(content)}
+<script src="/script.js"></script>
 </body>
 </html>`
 }

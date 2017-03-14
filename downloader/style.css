@@ -20,17 +20,24 @@ body {
   font-size: 18px;
 }
 
-.wrapper {
+#files {
   padding: 10px;
   color: white;
   background: #09f;
   border-radius: 5px;
 }
 
+.dead #files {
+  background: #ddd;
+}
+
+.dead #link {
+  text-decoration: line-through;
+}
+
 h1 {
   margin-top: 0;
   color: #f09;
-  text-decoration: underline;
 }
 
 a {
@@ -47,9 +54,7 @@ a:visited {
 
 .footer {
   margin-top: 2em;
-  font-size: 0.8em;
-  /*font-style: normal;*/
-  /*font-weight: normal;*/
+  font-size: 0.7em;
 }
 
 .primary {

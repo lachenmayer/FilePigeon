@@ -51,23 +51,7 @@ function model (action$) {
   }, {})
 }
 
-function view (files) {
-  const fileList = Object.values(files)
-  return h('div.files', [
-    h('div.list', fileList.map(file =>
-      h('div.file', [
-        h('span.fileName', file.name),
-        h('button.removeFile', {dataset: {path: file.path}}, 'x')
-      ])
-    )),
-    h('div.clear', [
-      fileList.length ? h('button.clearFiles', 'clear') : null
-    ])
-  ])
-}
-
 module.exports = {
   intent,
   model,
-  view,
 }

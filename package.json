@@ -24,6 +24,7 @@
     "progress-stream": "^1.2.0",
     "rimraf": "^2.6.1",
     "serve-static": "^1.12.1",
+    "server-destroy": "^1.0.1",
     "snabbdom": "^0.6.7",
     "snabbdom-to-html": "^3.1.1",
     "xstream": "^10.3.0"

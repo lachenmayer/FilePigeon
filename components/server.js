@@ -22,7 +22,6 @@ function model (action$) {
       const request = {}
       request[id] = requestState
       const requests = u(state.requests, request)
-      console.log(requests)
       return u(state, {requests})
     }
     switch (type) {
@@ -47,9 +46,12 @@ function model (action$) {
         state: 'progress',
         progress: payload.progress,
       })
-      case 'server/request/done': return request({
-        state: 'done',
-      })
+      case 'server/request/done': {
+        const {id} = payload
+        const requests = u(state.requests)
+        delete requests[id]
+        return u(state, {requests})
+      }
       case 'server/stop': return {
         state: 'stopped',
       }
@@ -58,20 +60,7 @@ function model (action$) {
   }, initialState)
 }
 
-function view ({state, address, requests}) {
-  return h(`div.container.server.${state}`, [
-    state,
-    address ? h('a', {attrs: {href: address}}, address) : null,
-    requests ? h('div.requests', Object.values(requests).map(({state, progress}) => h('div', [
-      state,
-      progress ? progress.percentage : null,
-    ]))) : null,
-    h('button.serverStop', 'stop')
-  ])
-}
-
 module.exports = {
   intent,
   model,
-  view,
 }
