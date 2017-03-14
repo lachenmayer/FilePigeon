@@ -22,9 +22,13 @@ button {
   cursor: default;
   font-family: Helvetica, Arial, sans-serif;
   color: white;
-  font-weight: 900;
+  font-weight: bold;
   font-style: italic;
   font-size: 18px;
+}
+
+.primary {
+  font-size: 2em;
 }
 
 .center {
@@ -67,16 +71,12 @@ button {
   opacity: 1;
 }
 
-.server.zipping {
-  background: #f09;
-}
-
-.server.starting {
-  background: #ff9;
-}
-
-.server.serving {
-  background: #0f9;
+a.shareLink {
+  color: #f09;
+  background: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-size: 1.5em;
 }
 
 .buttons {
@@ -87,8 +87,4 @@ button {
 
 .buttons button {
   padding: 10px;
-}
-
-.buttons .serve {
-  font-size: 2em;
 }

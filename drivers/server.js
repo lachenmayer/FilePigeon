@@ -62,12 +62,14 @@ function serveArchive (archive, files) {
           }
         }
       })
+
       server.listen(() => {
         const port = server.address().port
         const ip = internalIp.v4()
         const address = `http://${ip}:${port}/`
         listener.next(action('server/ready', address))
       })
+
       this.server = server
     },
     stop: () => {
@@ -117,11 +119,27 @@ function htmlHandler (req, res) {
 }
 
 function template (archive, files) {
-  const fileList = h('div.files',
-    files.map(file =>
-      h('div.file', file.name)
-    )
-  )
+  const content = h('div.container', [
+    h('div.header', [
+      h('h1', 'These files are for you! :)'),
+    ]),
+    h('div.wrapper', [
+      h('div.files',
+        files.map(file =>
+          h('div.file', file.name)
+        )
+      ),
+      h('div.download', [
+        h('a.primary', {attrs: {href: '/drop'}}, 'download all files'),
+        ' ',
+        h('span.fileSize', fileSize(archive.size)),
+      ]),
+    ]),
+    h('div.footer', [
+      h('p', 'These files were shared with FilePigeon.'),
+      h('p', 'FilePigeon lets you share files with people on the same network (eg. same WiFi) without having to upload the files to the "cloud".'),
+    ]),
+  ])
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -130,10 +148,7 @@ function template (archive, files) {
 <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-<p>this is ur file pigeon :-)</p>
-${toHtml(fileList)}
-${fileSize(archive.size)}
-<p><a href="/drop">click here</a> to get ur droppings</p>
+${toHtml(content)}
 </body>
 </html>`
 }

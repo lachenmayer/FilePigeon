@@ -51,22 +51,26 @@ var grow = {
   remove: {'font-size': 0},
 }
 
-function view ({dragging, files, server: serverState}) {
-  if (serverState.state === 'stopped') {
-    return filePickerView(dragging, files)
-  } else {
-    return server.view(serverState)
-  }
-}
-
-function filePickerView (dragging, files) {
-  const children = Object.keys(files).length > 0
-    ? filesView(files)
-    : introView()
-
-  return h('div.container.picker',
-    {style: {background: dragging === 'none' ? '#09f' : '#3bf', transition: 'background 200ms'}},
-    children
+function view ({dragging, files, server}) {
+  const serverStopped = server.state === 'stopped'
+  const serverStarting = server.state === 'zipping' || server.state === 'starting'
+  const hasFiles = Object.keys(files).length > 0
+  const isDragging = dragging !== 'none'
+  const background = serverStopped
+    ? isDragging
+      ? '#3bf'
+      : '#09f'
+    : serverStarting
+      ? '#999'
+      : '#0d7'
+  return h(`div.container`, {class: {picker: serverStopped}, style: {background, transition: 'background 400ms'}},
+    serverStopped
+      ? hasFiles
+        ? filesView(files)
+        : introView()
+      : serverStarting
+        ? serverStartingView(server.state)
+        : servingView(server)
   )
 }
 
@@ -82,7 +86,7 @@ function introView () {
 function filesView (files) {
   const fileList = Object.values(files)
   const size = fileList.map(file => file.size).reduce((a, b) => a + b, 0)
-  return h('div.files', [
+  return h('div.files.picker', [
     h('div.centerVertical', [
       h('div.list', {style: grow},
         fileList.map(file =>
@@ -95,8 +99,28 @@ function filesView (files) {
       ),
     ]),
     h('div.buttons', {style: grow}, [
-      h('button.serve', 'serve'),
+      h('button.primary.serve', 'start sharing'),
       h('button.clearFiles', 'clear'),
     ])
   ])
+}
+
+function serverStartingView (state) {
+  return h('div.center', [
+    'preparing your drop :)'
+  ])
+}
+
+function servingView ({state, address, requests}) {
+  return [
+    h('div.center', [
+      h('h1', 'Your drop is ready.'),
+      h('p', 'Send the link to anyone on your local network:'),
+      h('p', h('a.shareLink', {attrs: {href: address}}, address)),
+      h('button.copyToClipboard', 'copy link')
+    ]),
+    h('div.buttons', {style: grow}, [
+      h('button.primary.serverStop', 'stop sharing')
+    ])
+  ]
 }
