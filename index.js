@@ -59,24 +59,18 @@ app.on('ready', () => {
       .map(a => a.payload)
 
     const zipCreateAction$ = archive$
-      .map(archive => action('zip/create', archive.files))
+      .map(archive => action('zip/create', archive))
     const zipRemoveAction$ = serverStopAction$
       .map(a => action('zip/remove', a.payload))
     const toZip$ = xs.merge(zipCreateAction$, zipRemoveAction$)
 
     const serverStartAction$ = ofType(sources.zip, 'zip/ready')
-      .compose(sampleCombine(archive$))
-      .map(([zipReadyAction, archive]) => Object.assign({}, archive, zipReadyAction.payload))
-      .map(archive => {
-        archive.title = archive.title || 'FilePigeon Drop' // set default title
-        return archive
-      })
-      .map(archive => action('server/start', archive))
+      .map(a => action('server/start', a.payload))
     const toServer$ = xs.merge(serverStartAction$, serverStopAction$)
 
     const serverZippingAction$ = ofType(sources.zip, 'zip/starting')
       .mapTo(action('server/zipping'))
-    const toRenderer$ = xs.merge(sources.server, serverZippingAction$, serverStartAction$, serverStopAction$).debug()
+    const toRenderer$ = xs.merge(sources.server, serverZippingAction$, serverStartAction$, serverStopAction$)
 
     const sinks = {
       renderer: toRenderer$,

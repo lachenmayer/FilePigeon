@@ -60,7 +60,8 @@ function serveArchive (archive) {
             res.end()
           }
           default: {
-            const serve = serveStatic('downloader', {dotfiles: 'ignore', index: false})
+            const downloaderPath = path.join(__dirname, '..', 'downloader')
+            const serve = serveStatic(downloaderPath, {dotfiles: 'ignore', index: false})
             return serve(req, res, onError)
           }
         }
@@ -134,7 +135,7 @@ function template (archive) {
       h('p#error'),
     ]),
     h('div#files', [
-      archive.name ? h('h2.archiveName', archive.name) : '',
+      archive.name !== 'FilePigeon Drop' ? h('h2.archiveName', archive.name) : '', // TODO clean up
       h('div.list',
         archive.files.map(file =>
           h('div.file', file.name)

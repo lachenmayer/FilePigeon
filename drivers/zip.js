@@ -17,7 +17,7 @@ module.exports = function zipDriver (action$) {
     .flatten()
 }
 
-function zipFile$ (files) {
+function zipFile$ ({files, name}) {
   if (files == null) {
     return xs.empty()
   }
@@ -34,12 +34,14 @@ function zipFile$ (files) {
           const archive = archiver('zip')
           archive.pipe(zipStream)
 
-          addFiles(archive, files)
+          addFiles(archive, {files, name})
 
           zipStream.on('close', () => {
             listener.next(action('zip/ready', {
               path: zipPath,
-              size: archive.pointer()
+              size: archive.pointer(),
+              files,
+              name,
             }))
           })
         }
@@ -51,13 +53,13 @@ function zipFile$ (files) {
   })
 }
 
-async function addFiles (archive, files) {
+async function addFiles (archive, {files, name}) {
   for (let file of files) {
     const stats = await pify(fs.stat)(file.path)
     if (stats.isFile()) {
-      archive.file(file.path, {name: file.name, prefix: zipBaseName})
+      archive.file(file.path, {name: file.name, prefix: name})
     } else if (stats.isDirectory()) {
-      const destinationPath = path.join(zipBaseName, file.name)
+      const destinationPath = path.join(name, file.name)
       // this API is weird. why different behaviour from `file`? https://archiverjs.com/docs/Archiver.html#directory
       archive.directory(file.path, destinationPath)
     } else {

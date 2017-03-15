@@ -5,7 +5,10 @@ const sampleCombine = require('xstream/extra/sampleCombine').default
 function intent (dom, archiveState$) {
   const serverFilesAction$ = dom.select('.serve').events('click')
     .compose(sampleCombine(archiveState$))
-    .map(([_, archive]) => Object.assign({}, archive, {files: Object.values(archive.files)}))
+    .map(([_, archive]) => Object.assign({}, archive, {
+      files: Object.values(archive.files),
+      name: archive.name || 'FilePigeon Drop',
+    }))
     .map(archive => action('server/archive', archive))
   const serverStopAction$ = dom.select('button.serverStop').events('click')
     .mapTo(action('server/stop'))
