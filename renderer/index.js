@@ -126,7 +126,7 @@ function filesView (archive) {
 
 function serverStartingView (state) {
   return h('div.center', [
-    'preparing your drop :)'
+    'Preparing your drop :)'
   ])
 }
 

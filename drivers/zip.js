@@ -53,15 +53,20 @@ function zipFile$ ({files, name}) {
   })
 }
 
-async function addFiles (archive, {files, name}) {
+async function addFiles (archive, {files, name: archiveName}) {
   for (let file of files) {
     const stats = await pify(fs.stat)(file.path)
+    const zipData = {
+      name: file.name,
+      prefix: archiveName,
+      stats,
+    }
     if (stats.isFile()) {
-      archive.file(file.path, {name: file.name, prefix: name})
+      archive.file(file.path, zipData)
     } else if (stats.isDirectory()) {
-      const destinationPath = path.join(name, file.name)
+      const destinationPath = path.join(archiveName, file.name)
       // this API is weird. why different behaviour from `file`? https://archiverjs.com/docs/Archiver.html#directory
-      archive.directory(file.path, destinationPath)
+      archive.directory(file.path, destinationPath, zipData)
     } else {
       console.warn('encountered weird file', file, stats)
     }
