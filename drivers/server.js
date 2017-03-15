@@ -30,7 +30,7 @@ function serveArchive (archive) {
   return xs.create({
     start: listener => {
       const server = http.createServer((req, res) => {
-        const id = req.connection.remoteAddress + ':' + req.connection.remotePort
+        const id = req.connection.remoteAddress
 
         const onError = finalHandler(req, res)
 
