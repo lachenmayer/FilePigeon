@@ -1,5 +1,5 @@
 function log (x) {
-  console.log(x)
+  console.error(x)
   return x
 }
 

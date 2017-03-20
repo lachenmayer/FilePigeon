@@ -43,7 +43,7 @@ function model (action$) {
     const u = (base, diff) => Object.assign({}, base, diff)
     switch (type) {
       case 'archive/add': {
-        const files = {}
+        const files = u(model.files)
         payload.forEach(file => {
           files[file.path] = file
         })

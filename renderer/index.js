@@ -105,7 +105,6 @@ function introView () {
 
 function filesView (archive) {
   const fileList = Object.values(archive.files)
-  const size = fileList.map(file => file.size).reduce((a, b) => a + b, 0)
   return h('div.files.picker', [
     h('input.archiveName', {attrs: {type: 'text', placeholder: 'untitled', value: archive.name}}),
     h('div.list', {style: grow},
